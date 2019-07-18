@@ -18,6 +18,14 @@ def scan_for_data(data_path):
     return glob.glob(data_path + '/*.txt')
 
 
+def process_file(filepath):
+    with codecs.open(filepath, 'r', 'utf-8') as fd:
+        print 'PARESE FILE: ', filepath
+        parsed = parse_content(fd.read())
+
+    return parsed
+
+
 def parse_content(content):
     html_content = creole2html(content)
     soup = BeautifulSoup(html_content, features="html.parser")
@@ -28,9 +36,19 @@ def parse_content(content):
     for table in tables:
         for table_row in table.findAll('tr'):
             columns = table_row.findAll('td')
-            label, value = columns
-            label = label.text.replace(':', '')
-            value = value.text
+            print 'col->', columns
+            if len(columns) == 0:
+                continue
+            if len(columns) == 1:
+                labels = columns=[0]
+                value = ""
+            elif len(columns) > 2:
+                label = columns=[0]
+                value = ' '.join(columns[1:])
+            else:
+                label, value = columns
+                label = label.text.replace(':', '')
+                value = value.text
             x = 1
             while label in labels:
                 label = u"{label}_{counter}".format(label=label, counter=x)
@@ -51,15 +69,9 @@ def process_file2csv(filepath):
             writer.writerows(parsed)
 
 
-def process_file(filepath):
-    with codecs.open(filepath, 'r', 'utf-8') as fd:
-        parsed = parse_content(fd.read())
-
-    return parsed
-
-
 def main():
     files = scan_for_data(DATA_DIR)
+    print 'FILES NUMBER:', len(files)
     big_data = OrderedDict()
     workbook = xlsxwriter.Workbook('data.xlsx')
     worksheet = workbook.add_worksheet()
