@@ -29,7 +29,6 @@ def parse_content(content):
     html_content = creole2html(content)
     soup = BeautifulSoup(html_content, features="html.parser")
     tables = soup.find_all("table")
-
     output_rows = []
     labels = []
     table_type_names = []
@@ -39,13 +38,13 @@ def parse_content(content):
             table_type = table.findPrevious("h4").text
         except AttributeError:
             table_type = "_"
-
+        #print "table nameee typee:--->", table_type
         y = 1
         while table_type in table_type_names:
             table_type = "{table_type}_{counter}".format(table_type=table_type,
                                                          counter=y)
             y += 1
-
+        #print "TABLE_name:", table_type_names, table_type
         table_type_names.append(table_type)
 
         for table_row in table.findAll('tr'):
@@ -90,7 +89,7 @@ def process_file2csv(filepath):
 
 def main():
     files = scan_for_data(DATA_DIR)
-    # files = ['./data/bogusz_mariola.txt']
+    #files = ['./data/smolnicki_tomasz.txt']
     files_count = len(files)
     print >> sys.stderr, 'FILES NUMBER:', files_count
     big_data = OrderedDict()
