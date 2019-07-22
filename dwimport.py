@@ -16,16 +16,16 @@ OUTPUT_DIR = "./output"
 
 
 def scan_for_data(data_path):
-    return glob.glob(data_path + '/*.txt')
+    return sorted(glob.glob(data_path + '/*.txt'))
 
 
 def process_file(filepath):
     with codecs.open(filepath, 'r', 'utf-8') as fd:
-        parsed = parse_content(fd.read())
+        parsed = parse_content(fd.read(), filepath)
     return parsed
 
 
-def parse_content(content):
+def parse_content(content, filename):
     html_content = creole2html(content)
     soup = BeautifulSoup(html_content, features="html.parser")
     tables = soup.find_all("table")
@@ -35,13 +35,21 @@ def parse_content(content):
     for table in tables:
 
         try:
-            table_type = table.findPrevious("h4").text
+            table_type = table.findPrevious("h4").text.strip().lower().replace(":", "")
+            if table_type == "dane firmowe" or table_type == "firma":
+                table_type = "dane firmy"
         except AttributeError:
+            table_rows = table.findAll('tr')
             table_type = "_"
+            if table_rows > 25:
+                table_type = "dane"
+            if table_rows <= 10:
+                table_type = "dane firmy"
+            print "UNKNOWN TABLE: ", filename, 'NEW_TABLE_NAME: ', table_type
         #print "table nameee typee:--->", table_type
         y = 1
         while table_type in table_type_names:
-            table_type = "{table_type}_{counter}".format(table_type=table_type,
+            table_type = "{table_type}_{counter}".format(table_type=table_type.lower(),
                                                          counter=y)
             y += 1
         #print "TABLE_name:", table_type_names, table_type
@@ -102,16 +110,16 @@ def main():
     cnt = 0
     big_data['FILE ID'] = []
     for f in files:
-        print f
+        #print f
         parsed_data = process_file(f)
         big_data['FILE ID'].append(f)
         tmp_labels_list = ['FILE ID']
         for item in parsed_data:
             if item not in big_data:
                 header_counter[item] = 1
-                print u"NEW COL:;  {name:30} ;[{file}] ;({cnt})".format(name=item,
-                                                                        file=f,
-                                                                        cnt=cnt)
+                # print u"NEW COL:;  {name:30} ;[{file}] ;({cnt})".format(name=item,
+                #                                                         file=f,
+                #                                                         cnt=cnt)
                 if cnt == 0:
                     big_data[item] = []
                 else:
@@ -128,10 +136,20 @@ def main():
         cnt += 1
         # print "\r\t\t{}/{} {:04.2f}%".format(cnt, files_count, (float(cnt) / files_count) * 100),
 
+    def _dict_key_sorter(key):
+        import re
+        tbl_type_re = re.compile(".*(\[.*\]).*")
+        finded = tbl_type_re.findall(key[0])
+        if finded:
+            return finded[0]
+        else:
+            return key
+
+    new_ordered_dict = OrderedDict(sorted(big_data.items(), key=lambda t: _dict_key_sorter(t)))
     pos = 0
-    for l in big_data:
+    for l in new_ordered_dict:
         to_write = [l]
-        to_write.extend(big_data[l])
+        to_write.extend(new_ordered_dict[l])
         worksheet.write_column(0, pos, to_write)
         pos += 1
     workbook.close()
